@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Timetable</title>
+    <style>
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* Dropdown styling */
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            background: #fff;
+        }
+
+        /* Button styling */
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color:rgb(46, 202, 64);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
+        }
+    </style>
+
+    <script>
+        function updateDropdown() {
+            var selection = document.getElementById("branch_section");
+            var selectedOption = selection.options[selection.selectedIndex];
+            
+            if (selectedOption.value.startsWith("branch_")) {
+                document.getElementById("selectedBranch").value = selectedOption.value.replace("branch_", "");
+                document.getElementById("selectedSection").value = "";
+            } else if (selectedOption.value.startsWith("section_")) {
+                document.getElementById("selectedSection").value = selectedOption.value.replace("section_", "");
+                document.getElementById("selectedBranch").value = "";
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Select Branch or Section & Semester</h2>
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- Combined Dropdown for Branch & Section -->
+            <label>Select Branch or Section:</label>
+            <select id="branch_section" name="branch_section" onchange="updateDropdown()" required>
+                <option value="" selected>-- Select an Option --</option>
+                {% for branch in branches %}
+                    <option value="branch_{{ branch.id }}">Branch: {{ branch.name }}</option>
+                {% endfor %}
+                {% for section in sections %}
+                    <option value="section_{{ section.id }}">Section: {{ section.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Hidden Fields to Capture Selected Values -->
+            <input type="hidden" name="branch" id="selectedBranch" value="">
+            <input type="hidden" name="section" id="selectedSection" value="">
+
+            <!-- Semester Dropdown -->
+            <label>Select Semester:</label>
+            <select name="semester" required>
+                <option value="" disabled selected>-- Select Semester --</option>
+                {% for semester in semesters %}
+                    <option value="{{ semester.id }}">{{ semester.number }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Submit Button -->
+            <button type="submit">Download Timetable</button>
+        </form>
+    </div>
+
+</body>
+</html>
+

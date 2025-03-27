@@ -1,0 +1,222 @@
+<!DOCTYPE html> 
+<html>
+<head>
+    <title>Teacher Timetable</title>
+    <style>
+        /* General body styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fc;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h2, h3 {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .timetable-box {
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 2500px;  /* Increased width */
+            max-width: 1200px; /* Limits max width for better alignment */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 1.1em;
+        }
+
+        th, td {
+            border: 2px solid #4CAF50;
+            padding: 10px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        td {
+            background-color: #f9f9f9;
+            font-size: 1em;
+        }
+
+        /* Style for subject entries */
+        .assigned-subject {
+            background-color: #e1f7d5;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+
+        /* Reduced font size for subject details */
+        .assigned-subject strong {
+            font-size: 10px;
+            color: #2e7d32;
+        }
+
+        .assigned-subject .subject-code {
+            font-size: 13px;
+            color: #1b5e20;
+        }
+
+        .assigned-subject .room-dropdown {
+            font-size: 13px;
+            padding: 4px;
+        }
+
+        /* Prayer section (bold text, no color change) */
+        .prayer {
+            font-weight: bold;
+            font-size: 20px;
+            background-color: transparent !important;
+        }
+
+        /* Form dropdown styling */
+        select {
+            font-size: 13px;
+            padding: 4px;
+            border-radius: 5px;
+            border: 2px solid #4CAF50;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        /* Button styling */
+        .home-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: white;
+            background-color: #4CAF50;
+            padding: 10px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+        
+        .home-button .arrow {
+            font-weight: 900; /* Makes the arrow bold */
+            font-size: 15px; /* Increases arrow size */
+        }
+        
+        .home-button:hover {
+            background-color: #388E3C;
+
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 18px;
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #388E3C;
+        }
+    </style>
+</head>
+<body>
+    <a href="{% url 'index' %}" class="home-button"> 
+        <span class="arrow">&#8592;</span> Back to Home
+    </a>
+    
+    <h2>Select Teacher</h2>
+    <form method="GET">
+        <select name="teacher" onchange="this.form.submit()">
+            <option value="">-- Select --</option>
+            {% for teacher in teachers %}
+                <option value="{{ teacher.id }}" {% if selected_teacher_id and teacher.id|stringformat:"s" == selected_teacher_id %}selected{% endif %}>
+                    {{ teacher.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% if timetable_data %}
+        <div class="timetable-box">
+            <h2>Timetable for {{ selected_teacher.name }}</h2>
+            {% comment %} <p><strong>Branch:</strong> {{ selected_teacher_branch|default:"N/A" }} | <strong>Section:</strong> {{ selected_teacher_section|default:"N/A" }}</p> {% endcomment %}
+            
+            <table id="timetable">
+                <thead>
+                    <tr>
+                        <th>Time/Day</th>
+                        {% for day in days %}
+                        <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for time in time_slots %}
+                    <tr>
+                        {% if time == "10:00" %}
+                        <td>{{ time }}</td>
+                        <td colspan="{{ days|length }}" class="prayer">Prayer</td>
+                        {% else %}
+                        <td>{{ time }}</td>
+                        {% for day in days %}
+                        <td class="drop-zone" data-day="{{ day }}" data-hour="{{ time }}">
+                            {% for entry in timetable_data %}
+                                {% if entry.day == day and entry.time_slot == time %}
+                                <div class="assigned-subject">
+                                    <strong>{{ entry.subject.name }}</strong> <br>
+                                    <span class="subject-code">{{ entry.subject.code }}</span> <br>
+                                    {% comment %} Teacher: {{ entry.teacher.name }}<br> {% endcomment %}
+                                    <select class="room-dropdown">
+                                        <option value="" disabled {% if not entry.room.id %}selected{% endif %}>Select Room</option>
+                                        {% for room in rooms %}
+                                        <option value="{{ room.id }}" {% if entry.room.id == room.id %}selected{% endif %}>
+                                            {{ room.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                        {% endfor %}
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+        <a href="{% url 'generate_pdf' %}?teacher={{ selected_teacher_id }}">
+            <button>Download PDF</button>
+        </a>
+        {% else %}
+            <h3>No timetable available for the selected teacher.</h3>
+        {% endif %}
+        </div>
+
+
+</body>
+</html>

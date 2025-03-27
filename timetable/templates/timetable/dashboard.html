@@ -1,0 +1,463 @@
+
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Maker</title>
+    <style>
+        /* General Body Styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fc;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.8em;
+            color: #4CAF50;
+        }
+
+        /* Container Styling */
+        .container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Subject List Styling */
+        #subject-list {
+            width: 20%;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 80vh;
+            margin-right: 20px;
+        }
+
+        .subject-box {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e0f7fa;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .subject-box:hover {
+            background-color: #b2ebf2;
+        }
+
+        /* Timetable Styling */
+        #timetable {
+            width: 75%;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #timetable th, #timetable td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 15px;
+        }
+
+        #timetable th {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 18px;
+        }
+
+        .drop-zone {
+            background-color: #f4f7fc;
+            position: relative;
+            padding: 10px;
+            min-height: 50px;
+            transition: background-color 0.3s ease;
+        }
+
+        .drop-zone:hover {
+            background-color: #e0f7fa;
+        }
+
+        .assigned-subject {
+            padding: 10px;
+            background-color: #e1f7d5;
+            border-radius: 6px;
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .assigned-subject:hover {
+            background-color: #b9f5a0;
+        }
+
+        .room-dropdown {
+            margin-top: 10px;
+            padding: 8px;
+            width: 100%;
+            border-radius: 5px;
+            border: 1px solid #007bff;
+        }
+
+        /* Save Button Styling */
+        #save-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background-color: #28a745;
+            color: white;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #save-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            #subject-list, #timetable {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>
+        Timetable for 
+        {% if branch %}
+            {{ branch.name }}
+        {% elif section %}
+            Section {{ section.name }}
+        {% endif %}
+        - Semester {{ semester }}
+    </h1>
+    {% comment %} {% if subjects %}
+   <h1>ok</h1>
+{% else %}
+    <p>No subjects assigned for this section in this semester.</p>
+{% endif %} {% endcomment %}
+    <div class="container">
+        <!-- Subject List -->
+        <div id="subject-list">
+            <h3>Subjects</h3>
+            {% for subject in subjects %}
+            <div class="subject-box" draggable="true"
+                data-id="{{ subject.id }}"
+                data-name="{{ subject.name }}"
+                data-teacher="{{ subject.teachers }}"
+                data-code="{{ subject.code }}"
+                data-no-of-classes="{{ subject.classes_per_week }}"
+                data-class-type="{{ subject.class_type }}"
+                data-students-in-class="{{ subject.students_in_class }}"
+                data-hours="{{ subject.hours }}">
+                {{ subject.name }} ({{ subject.code }}) 
+                <br>
+                Teachers: 
+                {% for teacher in subject.teachers %}
+                    {{ teacher }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}       
+            </div>
+            {% endfor %}
+        </div>
+        
+
+        <!-- Timetable -->
+        <table id="timetable">
+            <thead>
+                <tr>
+                    <th>Time/Day</th>
+                    {% for day in days %}
+                    <th>{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for time in Time_slots %}
+                <tr>
+                    {% if time == "10:00" %}
+                    <td>{{ time }}</td>
+                    <td colspan="{{ days|length }}" style="text-align: center; font-weight: bold;">
+                        Prayer
+                    </td>
+                    {% else %}
+                    <td>{{ time }}</td>
+                    {% for day in days %}
+                    <td class="drop-zone" data-day="{{ day }}" data-hour="{{ time }}">
+                        {% for entry in timetable_data %}
+                            {% if entry.day == day and entry.time_slot == time %}
+                            <div class="assigned-subject" data-id="{{ entry.subject_id }}">
+                                <strong>{{ entry.subject_name }}</strong> <br>
+                                <strong>{{ entry.subject_code }}</strong> 
+                                <br>
+                                Teacher: {{ entry.teacher }}
+                                <select class="room-dropdown">
+                                    <option value="" disabled {% if not entry.room_id %}selected{% endif %}>Select Room</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.id }}" {% if entry.room_id == room.id %}selected{% endif %}>
+                                        {{ room.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    {% endfor %}
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            
+            
+        </table>
+    </div>
+    <button id="save-btn" style="margin-top: 20px; padding: 10px; background-color: green; color: white; border: none; border-radius: 5px;">Save Timetable</button>
+     <!-- CSRF token -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const subjectBoxes = document.querySelectorAll('.subject-box');
+            const dropZones = document.querySelectorAll('.drop-zone');
+            const assignedSubjects = {}; // Track the assigned subjects per time-slot
+            const saveButton = document.getElementById('save-btn');
+            
+
+            // Initialize assignedSubjects with empty arrays for each day and hour
+            dropZones.forEach(zone => {
+                const day = zone.dataset.day;
+                const hour = zone.dataset.hour;
+                if (!assignedSubjects[day]) {
+                    assignedSubjects[day] = {};
+                }
+                if (!assignedSubjects[day][hour]) {
+                    assignedSubjects[day][hour] = [];
+                }
+            });
+               
+            // Calculate remaining classes for each subject based on existing entries
+        subjectBoxes.forEach(box => {
+            const subjectId = box.dataset.id;
+            const totalClasses = parseInt(box.dataset.noOfClasses, 10);
+            let alreadyAssigned = 0;
+
+            // Check all drop zones for existing assignments of the subject
+            dropZones.forEach(zone => {
+                const assigned = Array.from(zone.querySelectorAll('.assigned-subject'))
+                    .filter(sub => sub.dataset.id === subjectId);
+                alreadyAssigned += assigned.length;
+            });
+
+            // Update the remaining class count
+            box.dataset.noOfClasses = Math.max(0, totalClasses - alreadyAssigned);
+        });
+            
+            // Drag and Drop - Subject Box
+            
+subjectBoxes.forEach(box => {
+    box.addEventListener('dragstart', event => {
+        event.dataTransfer.setData('subjectId', box.dataset.id);
+        event.dataTransfer.setData('subjectName', box.dataset.name);
+        event.dataTransfer.setData('teacher', box.dataset.teacher); // Ensure teacher is stored
+        event.dataTransfer.setData('code', box.dataset.code);
+        event.dataTransfer.setData('remainingClasses', box.dataset.noOfClasses);
+        event.dataTransfer.setData('classType', box.dataset.classType);
+        event.dataTransfer.setData('studentsInClass', box.dataset.studentsInClass);
+        event.dataTransfer.setData('hours', box.dataset.hours);
+        event.dataTransfer.effectAllowed = "move";
+    });
+});
+
+// Drag Over Event (Enable Dropping)
+dropZones.forEach(zone => {
+    zone.addEventListener('dragover', event => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+    });
+
+    zone.addEventListener('drop', event => {
+        event.preventDefault();
+
+        const subjectId = event.dataTransfer.getData('subjectId');
+        const subjectName = event.dataTransfer.getData('subjectName');
+        const teacher = event.dataTransfer.getData('teacher'); // Capture the teacher's name
+        const code = event.dataTransfer.getData('code');
+        let remainingClasses = parseInt(event.dataTransfer.getData('remainingClasses'), 10);
+        const classType = event.dataTransfer.getData('classType');
+        const studentsInClass = event.dataTransfer.getData('studentsInClass');
+        const hours = parseInt(event.dataTransfer.getData('hours'), 10);
+        const timeSlot = event.target.closest('.drop-zone').dataset.hour;
+        const day = event.target.closest('.drop-zone').dataset.day;
+
+        // Prevent duplicate assignments
+        if (assignedSubjects[day][timeSlot].includes(subjectId)) {
+            alert('This subject is already assigned to this time slot.');
+            return;
+        }
+        
+         // Restrict practical classes for girls to specific slots
+         if (classType === 'practical' && studentsInClass === 'girls' && !['7:00', '7:55', '8:50'].includes(timeSlot)) {
+            alert('Practical classes for girls can only be scheduled in the first three time slots: 7:00, 7:55, and 8:50.');
+            return;
+        }
+
+         // Restrict practical classes for boys to specific slots
+         if (classType === 'practical' && studentsInClass === 'boys' && ['7:00', '7:55', '8:50'].includes(timeSlot)) {
+            alert('Practical classes for boys can only be scheduled from 10:30.');
+            return;
+        }
+
+        // Check for restrictions (as per class type, etc.)
+        if (remainingClasses > 0) {
+            let dropdownHTML = 
+                `<select class="room-dropdown">
+                    <option value="" selected disabled>Select Room</option>
+                    {% for room in rooms %}
+                    <option value="{{ room.id }}">{{ room.name }}</option>
+                    {% endfor %}
+                </select>`;
+
+            // Create the subject box with teacher and room dropdown
+            const subjectBoxHTML = 
+                `<div class="assigned-subject" data-id="${subjectId}" data-teacher="${teacher}">
+                    <strong>${subjectName}</strong> (${code})<br>
+                    Teacher: ${teacher}
+                    <br>
+                    ${dropdownHTML}
+                </div>`;
+
+            // Append the subject box with room dropdown to the drop-zone
+            zone.innerHTML += subjectBoxHTML;
+
+            // Update the assigned subjects for the specific day and time slot
+            assignedSubjects[day][timeSlot].push(subjectId);
+
+            // Update the remaining classes
+            const subjectBox = document.querySelector(`.subject-box[data-id="${subjectId}"]`);
+            subjectBox.dataset.noOfClasses = remainingClasses - 1;
+        } else {
+            alert('No more classes available for this subject this week.');
+        }
+    });
+});
+
+        
+            // Click to remove subject box from drop zone, but not if the click is on the room dropdown
+            document.body.addEventListener('click', function(event) {
+                if (!event.target.closest('.room-dropdown') && event.target.closest('.assigned-subject')) {
+                    const assignedSubject = event.target.closest('.assigned-subject');
+                    const subjectId = assignedSubject.dataset.id;
+                    
+                    const day = assignedSubject.closest('.drop-zone').dataset.day;
+                    const hour = assignedSubject.closest('.drop-zone').dataset.hour;
+            
+                    // Remove the subject box
+                    assignedSubject.remove();
+            
+                    // Update tracker
+                    const index = assignedSubjects[day][hour].indexOf(subjectId);
+                    if (index !== -1) {
+                        assignedSubjects[day][hour].splice(index, 1);
+                    }
+            
+                    // Increment remaining classes
+                    const subjectBox = document.querySelector(`.subject-box[data-id="${subjectId}"]`);
+                    if (subjectBox) {
+                        let remainingClasses = parseInt(subjectBox.dataset.noOfClasses, 10);
+                        subjectBox.dataset.noOfClasses = remainingClasses + 1;
+                    }
+                }
+            });
+    
+           
+             document.getElementById('save-btn').addEventListener('click', function () {
+            // Collect timetable data
+            const timetableEntries = [];
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                const day = zone.getAttribute('data-day');
+                const hour = zone.getAttribute('data-hour');
+                const assignedSubjectsArray = zone.querySelectorAll('.assigned-subject');
+
+                assignedSubjectsArray.forEach(assignedSubject => {
+                    const subjectId = assignedSubject.getAttribute('data-id');
+                    const teacherName = assignedSubject.getAttribute('data-teacher');  // Get teacher for each subject
+                    const roomDropdown = assignedSubject.querySelector('.room-dropdown'); // Get the room dropdown for this specific subject
+                    const roomId = roomDropdown?.value;
+
+                    if (!roomId) {
+                        alert('Please select a room for all assigned subjects.');
+                        throw new Error('Incomplete timetable entry');
+                    }
+
+                    timetableEntries.push({
+                        day,
+                        time_slot: hour,
+                        subject_ids: [subjectId], // Push each subject individually
+                        room_id: roomId,
+                        teacher: teacherName,
+                    });
+                });
+            });
+
+            // Construct the fetch URL dynamically
+            const entityType = "{{ entity_type }}"; 
+            const entityId = "{{ entity_id }}"; 
+            const semester = "{{ semester }}"; 
+            const fetchUrl = `/timetable/timetable/${entityType}/${entityId}/semester/${semester}/dashboard/save_timetable/`;
+
+            // Fetch API call to save timetable data
+            fetch(fetchUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+                },
+                body: JSON.stringify({ timetable: timetableEntries }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    alert(data.message || "Timetable saved successfully!");
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("An error occurred while saving the timetable.");
+                });
+        });
+            
+            
+            
+            
+            
+            
+    
+        });
+
+    </script>
+    
+</body>
+</html>
+ 

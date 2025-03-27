@@ -1,0 +1,442 @@
+<!DOCTYPE html>  
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Allocation for {{ branch.name }}</title>
+    <style>
+        /* Basic Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            background-color: white;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #f1f1f1;
+        }
+
+        tr:hover td {
+            background-color: #f2f2f2;
+        }
+
+        /* Dropdown Styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            width: 200px;
+        }
+
+        .dropbtn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            max-height: 150px;
+            overflow-y: auto;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            z-index: 1;
+        }
+
+        .dropdown-content label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* Button Styles */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Teacher Allocation for {{ branch.name }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {% for semester, subjects in subjects_by_semester.items %}
+        <h2>{{ semester }}</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Subject Name (Code)</th>
+                    <th>Teacher</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                    <tr>
+                        <td>{{ subject.name }} ({{ subject.code }})</td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="dropbtn" id="selected_teacher_{{ subject.id }}">
+                                    Select Teacher
+                                </button>
+                                <div class="dropdown-content">
+                                    {% for teacher in teacher %}
+                                        <label>
+                                            <input type="checkbox" name="teacher_{{ subject.id }}" 
+                                                   value="{{ teacher.id }}" 
+                                                   class="teacher-checkbox" 
+                                                   data-subject="{{ subject.id }}"
+                                                {% if teacher in subject.teacher.all %}
+                                                    checked
+                                                {% endif %}
+                                            >
+                                            {{ teacher.name }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+    <button type="submit">Save</button>
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const checkboxes = document.querySelectorAll(".teacher-checkbox");
+
+        function updateSelectedTeacher(subjectId) {
+            let selectedTeacher = [];
+            document.querySelectorAll(`.teacher-checkbox[data-subject="${subjectId}"]:checked`).forEach(checkbox => {
+                selectedTeacher.push(checkbox.parentNode.textContent.trim());
+            });
+
+            let button = document.getElementById(`selected_teacher_${subjectId}`);
+            button.textContent = selectedTeacher.length > 0 ? selectedTeacher.join(", ") : "Select Teacher";
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", function() {
+                updateSelectedTeacher(this.dataset.subject);
+            });
+
+            // Initialize with pre-selected values
+            updateSelectedTeacher(checkbox.dataset.subject);
+        });
+    });
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Allocation for {{ branch.name }}</title>
+    <style>
+        /* Basic Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            background-color: white;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #f1f1f1;
+        }
+
+        tr:hover td {
+            background-color: #f2f2f2;
+        }
+
+        /* Select Box Styling */
+        select {
+            padding: 5px;
+            width: 200px;
+            margin: 5px;
+        }
+
+        /* Button Styles */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Teacher Allocation for {{ branch.name }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {% for semester, subjects in subjects_by_semester.items %}
+        <h2>{{ semester }}</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Subject Name (Code)</th>
+                    <th>Teacher</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                    <tr>
+                        <td>{{ subject.name }} ({{ subject.code }})</td>
+                        <td>
+                            <select name="teacher_{{ subject.id }}">
+                                <option value="">Select a Teacher</option>
+                                {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}"
+                                        {% if subject.teacher and subject.teacher.id == teacher.id %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ teacher.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+    <button type="submit">Save</button>
+</form>
+
+</body>
+</html>
+
+ {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} 
+<html>
+    <head>
+        <title>
+            {% comment %} {% block title %} {% endblock %} {% endcomment %}
+        {% comment %} </title> {% endcomment %}
+        {% comment %} 
+        <style>
+            {% comment %} {% block css%} {% endblock %} {% endcomment %}
+        {% comment %} </style>
+    </head>
+    <body> {% endcomment %}
+{% comment %} {% block body %} {% endblock %} {% endcomment %}
+
+{% comment %} <h1>hello world</h1> {% endcomment %}
+ 
+{% comment %}  
+<h1>Teacher Allocation for {{ branch.name }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {% for semester, subjects in subjects_by_semester.items %}
+        <h2>{{ semester }}</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Teacher</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                    <tr>
+                        <td>{{ subject.name }}</td>
+                        <td>
+                            <select name="teacher_{{ subject.id }}">
+                                <option value="">Select a Teacher</option>
+                                {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}"
+                                        {% if subject.teacher and subject.teacher.id == teacher.id %}
+                                            selected
+                                        {% endif %}
+                                    >
+                                        {{ teacher.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endfor %}
+    <button type="submit">Save</button>
+</form>
+    </body>
+</html> {% endcomment %}

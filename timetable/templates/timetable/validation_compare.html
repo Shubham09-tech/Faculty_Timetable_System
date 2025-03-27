@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Selection</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container-wrapper {
+            display: flex;
+            justify-content: flex-start;
+        }
+        .conflict-list {
+            width: 25%;
+            height: 100vh;
+            background: #ffebee;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .conflict-list h3 {
+            text-align: center;
+            color: red;
+        }
+        .conflict-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        .conflict-list li {
+            background: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid red;
+        }
+        .content-container {
+            flex-grow: 1;
+            padding: 20px;
+            max-width: 1000px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        .draggable {
+            cursor: grab;
+            padding: 5px;
+            border: 1px solid #ccc;
+            background: #e3f2fd;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .drag-over {
+            border: 2px dashed #007bff;
+            background: #f0f8ff;
+        }
+        td {
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <!-- Conflict Sidebar -->
+    <div class="conflict-list">
+        <h3>⚠ Conflict List</h3>
+        {% if conflicts %}
+            <ul>
+                {% for conflict in conflicts %}
+                    <li>{{ conflict }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No conflicts detected.</p>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-container">
+        <h2>Select Branch & Semester</h2>
+
+        <!-- Branch Selection Buttons -->
+        <div class="branch-btns">
+            {% for branch, semester_data in timetable_data.items %}
+                <button class="btn btn-info branch-btn" data-branch="{{ branch }}">{{ branch }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Semester Selection (Initially Hidden) -->
+        {% for branch, semester_data in timetable_data.items %}
+            <div id="semesters_{{ branch }}" class="semester-btns hidden">
+                <h3>Select Semester for {{ branch }}</h3>
+                {% for semester in semester_data.keys %}
+                    <button class="btn btn-secondary semester-btn" data-branch="{{ branch }}" data-semester="{{ semester }}">{{ semester }}</button>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <!-- Timetables (Initially Hidden) -->
+        {% for branch, semester_data in timetable_data.items %}
+            {% for semester, entries in semester_data.items %}
+                <div id="table_{{ branch }}_{{ semester }}" class="timetable hidden">
+                    <h4>{{ semester }} - {{ branch }}</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Time Slots</th>
+                                {% for day in days %}
+                                    <th>{{ day }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for time in time_slots %}
+                            <tr>
+                                {% if time == "10:00" %}
+                                <td>{{ time }}</td>
+                                <td colspan="{{ days|length }}" style="text-align: center; font-weight: bold; background-color: #f0f0f0;">
+                                    Prayer
+                                </td>
+                                {% else %}
+                                <td>{{ time }}</td>
+                                {% for day in days %}
+                                <td class="droppable" data-time="{{ time }}" data-day="{{ day }}">
+                                    {% for entry in entries %}
+                                        {% if entry.day == day and entry.time_slot == time %}
+                                            <div class="draggable" draggable="true" data-entry-id="{{ entry.id }}">
+                                                <strong>{{ entry.subject.name }}</strong> <br>
+                                                <strong>{{ entry.subject.code }}</strong> <br>
+                                                Teacher: {% for teacher in entry.teacher.all %} {{ teacher.name }}{% if not forloop.last %}, {% endif %}{% endfor %} <br>
+                                                Room: {{ entry.room.name }}
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                {% endfor %}
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+        {% endfor %}
+        {% comment %} <button id="save-timetable-btn" class="btn btn-success mt-4">💾 Save Timetable</button> {% endcomment %}
+        <a href="{% url 'validation' %}" class="btn btn-primary mt-4">🔙 Back to Validation</a>
+
+    </div>
+    
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let draggedItem = null;
+        let draggedParent = null;
+
+        // Handle branch selection
+        document.querySelectorAll(".branch-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+
+                document.querySelectorAll(".semester-btns").forEach(div => div.classList.add("hidden"));
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+                document.getElementById("semesters_" + branch).classList.remove("hidden");
+            });
+        });
+
+        // Handle semester selection
+        document.querySelectorAll(".semester-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+                let semester = this.dataset.semester;
+
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+                let timetableId = "table_" + branch + "_" + semester;
+                let timetable = document.getElementById(timetableId);
+                if (timetable) {
+                    timetable.classList.remove("hidden");
+                } else {
+                    alert("Timetable not found!");
+                }
+            });
+        });
+
+        // Make timetable entries draggable
+        document.querySelectorAll(".draggable").forEach(item => {
+            item.addEventListener("dragstart", function (event) {
+                draggedItem = event.target;
+                draggedParent = draggedItem.parentElement;
+                event.dataTransfer.setData("text/plain", draggedItem.dataset.entryId);
+            });
+        });
+
+        // Allow dropping into cells
+        document.querySelectorAll(".droppable").forEach(cell => {
+            cell.addEventListener("dragover", function (event) {
+                event.preventDefault();
+                cell.classList.add("drag-over");
+            });
+
+            cell.addEventListener("dragleave", function () {
+                cell.classList.remove("drag-over");
+            });
+
+            cell.addEventListener("drop", function (event) {
+                event.preventDefault();
+                cell.classList.remove("drag-over");
+
+                if (!draggedItem) return;
+
+                let targetCell = event.target;
+                while (!targetCell.classList.contains("droppable") && targetCell !== document.body) {
+                    targetCell = targetCell.parentElement;
+                }
+
+                if (!targetCell || targetCell === draggedParent) return;
+
+                let existingItem = targetCell.querySelector(".draggable");
+
+                if (existingItem) {
+                    draggedParent.appendChild(existingItem);
+                    targetCell.appendChild(draggedItem);
+                } else {
+                    targetCell.appendChild(draggedItem);
+                }
+
+                draggedItem = null;
+                draggedParent = null;
+            });
+        });
+
+        
+        
+    });
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} ----------------------------------------------------------------------- {% endcomment %}
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Selection</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container-wrapper {
+            display: flex;
+            justify-content: flex-start;
+        }
+        .conflict-list {
+            width: 25%;
+            height: 100vh;
+            background: #ffebee;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .conflict-list h3 {
+            text-align: center;
+            color: red;
+        }
+        .conflict-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        .conflict-list li {
+            background: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid red;
+        }
+        .content-container {
+            flex-grow: 1;
+            padding: 20px;
+            max-width: 1000px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <!-- Conflict Sidebar -->
+    <div class="conflict-list">
+        <h3>⚠ Conflict List</h3>
+        {% if conflicts %}
+            <ul>
+                {% for conflict in conflicts %}
+                    <li>{{ conflict }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No conflicts detected.</p>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-container">
+        <h2>Select Branch & Semester</h2>
+
+        <!-- Branch Selection Buttons -->
+        <div class="branch-btns">
+            {% for branch, semester_data in timetable_data.items %}
+                <button class="btn btn-info branch-btn" data-branch="{{ branch }}">{{ branch }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Semester Selection (Initially Hidden) -->
+        {% for branch, semester_data in timetable_data.items %}
+            <div id="semesters_{{ branch }}" class="semester-btns hidden">
+                <h3>Select Semester for {{ branch }}</h3>
+                {% for semester in semester_data.keys %}
+                    <button class="btn btn-secondary semester-btn" data-branch="{{ branch }}" data-semester="{{ semester }}">{{ semester }}</button>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <!-- Timetables (Initially Hidden) -->
+        {% for branch, semester_data in timetable_data.items %}
+            {% for semester, entries in semester_data.items %}
+                <div id="table_{{ branch }}_{{ semester }}" class="timetable hidden">
+                    <h4>{{ semester }} - {{ branch }}</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Time Slots</th>
+                                {% for day in days %}
+                                    <th>{{ day }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for time in time_slots %}
+                            <tr>
+                                {% if time == "10:00" %}
+                                <td>{{ time }}</td>
+                                <td colspan="{{ days|length }}" style="text-align: center; font-weight: bold;">
+                                    Prayer
+                                </td>
+                                {% else %}
+                                <td>{{ time }}</td>
+                                {% for day in days %}
+                                <td>
+                                    {% for entry in entries %}
+                                        {% if entry.day == day and entry.time_slot == time %}
+                                            <strong>{{ entry.subject.name }}</strong> <br>
+                                            <strong>{{ entry.subject.code }}</strong> <br>
+                                            Teacher: {{ entry.teacher.name }} <br>
+                                            Room: {{ entry.room.name }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                {% endfor %}
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        <a href="{% url 'validation' %}" class="btn btn-primary mt-4">🔙 Back to Validation</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Handle branch selection
+        document.querySelectorAll(".branch-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+
+                // Hide all semester sections
+                document.querySelectorAll(".semester-btns").forEach(div => div.classList.add("hidden"));
+
+                // Hide all timetables
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+
+                // Show semesters for the selected branch
+                document.getElementById("semesters_" + branch).classList.remove("hidden");
+            });
+        });
+
+        // Handle semester selection
+        document.querySelectorAll(".semester-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+                let semester = this.dataset.semester;
+
+                // Hide all timetables
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+
+                // Show the selected timetable
+                let timetableId = "table_" + branch + "_" + semester;
+                let timetable = document.getElementById(timetableId);
+                if (timetable) {
+                    timetable.classList.remove("hidden");
+                } else {
+                    alert("Timetable not found!");
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
+ {% endcomment %}
+
+
+
+
+
+{% comment %} --------------------------------------------------------------------- {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Selection</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 40px;
+            max-width: 1000px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .branch-btns, .semester-btns {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .branch-btns button, .semester-btns button {
+            margin: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Select Branch & Semester</h2>
+
+    <!-- Branch Selection Buttons -->
+    <div class="branch-btns">
+        {% for branch, semester_data in timetable_data.items %}
+            <button class="btn btn-info branch-btn" data-branch="{{ branch }}">{{ branch }}</button>
+        {% endfor %}
+    </div>
+
+    <!-- Semester Selection (Initially Hidden) -->
+    {% for branch, semester_data in timetable_data.items %}
+        <div id="semesters_{{ branch }}" class="semester-btns hidden">
+            <h3>Select Semester for {{ branch }}</h3>
+            {% for semester in semester_data.keys %}
+                <button class="btn btn-secondary semester-btn" data-branch="{{ branch }}" data-semester="{{ semester }}">{{ semester }}</button>
+            {% endfor %}
+        </div>
+    {% endfor %}
+
+    <!-- Timetables (Initially Hidden) -->
+    {% for branch, semester_data in timetable_data.items %}
+        {% for semester, entries in semester_data.items %}
+            <div id="table_{{ branch }}_{{ semester }}" class="timetable hidden">
+                <h4>{{ semester }} - {{ branch }}</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Time Slots</th>
+                            {% for day in days %}
+                                <th>{{ day }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for time in time_slots %}
+                        <tr>
+                            {% if time == "10:00" %}
+                            <td>{{ time }}</td>
+                            <td colspan="{{ days|length }}" style="text-align: center; font-weight: bold;">
+                                Prayer
+                            </td>
+                            {% else %}
+                            <td>{{ time }}</td>
+                            {% for day in days %}
+                            <td>
+                                {% for entry in entries %}
+                                    {% if entry.day == day and entry.time_slot == time %}
+                                        <strong>{{ entry.subject.name }}</strong> <br>
+                                        <strong>{{ entry.subject.code }}</strong> <br>
+                                        Teacher: {{ entry.teacher.name }} <br>
+                                        Room: {{ entry.room.name }}
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                            {% endfor %}
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <a href="{% url 'validation' %}" class="btn btn-primary mt-4">🔙 Back to Validation</a>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Handle branch selection
+        document.querySelectorAll(".branch-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+
+                // Hide all semester sections
+                document.querySelectorAll(".semester-btns").forEach(div => div.classList.add("hidden"));
+
+                // Hide all timetables
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+
+                // Show semesters for the selected branch
+                document.getElementById("semesters_" + branch).classList.remove("hidden");
+            });
+        });
+
+        // Handle semester selection
+        document.querySelectorAll(".semester-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                let branch = this.dataset.branch;
+                let semester = this.dataset.semester;
+
+                // Hide all timetables
+                document.querySelectorAll(".timetable").forEach(table => table.classList.add("hidden"));
+
+                // Show the selected timetable
+                let timetableId = "table_" + branch + "_" + semester;
+                let timetable = document.getElementById(timetableId);
+                if (timetable) {
+                    timetable.classList.remove("hidden");
+                } else {
+                    alert("Timetable not found!");
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+ {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% comment %} ------------------------------------------------------------------------------------------------ {% endcomment %}
+
+{% comment %} YEH SAHI CHL RAHA THA HTML FILE {% endcomment %}
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Validation Results</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 40px;
+            max-width: 1000px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .conflict-box {
+            border: 2px solid red;
+            background-color: #ffcccc;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .conflict-box h4 {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Timetable Validation Results</h2>
+
+    {% if conflicts %}
+        {% for conflict in conflicts %}
+            <div class="conflict-box">
+                <h4>⚠ {{ conflict.type }} on {{ conflict.day }} at {{ conflict.time_slot }}</h4>
+                {% if conflict.type == "Room Conflict" %}
+                    <p><strong>Room:</strong> {{ conflict.room }}</p>
+                {% elif conflict.type == "Teacher Conflict" %}
+                    <p><strong>Teacher:</strong> {{ conflict.teacher }}</p>
+                {% endif %}
+                <ul>
+                    {% for entry in conflict.conflicting_entries %}
+                        <li>
+                            <strong>Branch:</strong> {{ entry.branch__name }},
+                            <strong>Subject:</strong> {{ entry.subject__name }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-success">
+            ✅ No conflicts found in the timetable.
+        </div>
+    {% endif %}
+
+    <a href="{% url 'validation' %}" class="btn btn-primary mt-4">🔙 Back to Validation</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html> {% endcomment %}
+
+
+
+{% comment %} 
+def validation_compare(request):
+    # Get selected semesters from the request
+    selected_semesters = request.GET.getlist('semesters')
+
+    if not selected_semesters:
+        return render(request, 'timetable/validation_compare.html', {
+            'selected_semesters': None,
+            'distinct_days': [],
+            'timetable_data': [],
+            'conflicts': [],
+        })
+
+    # Fetch timetable data for the selected semesters, ordered by day and time slot
+    timetable_data = Timetable.objects.filter(
+        semester__id__in=selected_semesters
+    ).order_by('day', 'time_slot')
+
+    # Define the correct order of days
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+    # Get distinct days from the timetable
+    distinct_days = sorted(
+        timetable_data.values_list('day', flat=True).distinct(),
+        key=lambda x: days_order.index(x) if x in days_order else float('inf')
+    )
+
+    # Track conflicts
+    conflicts = []
+    clash_dict = defaultdict(list)
+
+    for day in distinct_days:
+        day_entries = timetable_data.filter(day=day)
+
+        for time_slot in day_entries.values_list('time_slot', flat=True).distinct():
+            slot_entries = day_entries.filter(time_slot=time_slot)
+
+            # Room conflicts: Same room used at the same time by different branches/sections
+            room_clashes = (
+                slot_entries.values('room__id', 'room__name')
+                .annotate(count=Count('id'))
+                .filter(count__gt=1)
+            )
+
+            # Teacher conflicts: Same teacher assigned to different branches/sections at the same time
+            teacher_clashes = (
+                slot_entries.values('teacher__id', 'teacher__name')
+                .annotate(count=Count('id'))
+                .filter(count__gt=1)
+            )
+
+            # Store detected room conflicts
+            for conflict in room_clashes:
+                room_id = conflict['room__id']
+                room_name = conflict['room__name']
+                conflicting_entries = slot_entries.filter(room__id=room_id)
+
+                conflicts.append({
+                    'day': day,
+                    'time_slot': time_slot,
+                    'type': 'Room Conflict',
+                    'room': room_name,
+                    'conflicting_entries': list(conflicting_entries.values('branch__name', 'subject__name'))
+                })
+
+            # Store detected teacher conflicts
+            for conflict in teacher_clashes:
+                teacher_id = conflict['teacher__id']
+                teacher_name = conflict['teacher__name']
+                conflicting_entries = slot_entries.filter(teacher__id=teacher_id)
+
+                conflicts.append({
+                    'day': day,
+                    'time_slot': time_slot,
+                    'type': 'Teacher Conflict',
+                    'teacher': teacher_name,
+                    'conflicting_entries': list(conflicting_entries.values('branch__name', 'subject__name'))
+                })
+
+    return render(request, 'timetable/validation_compare.html', {
+        'selected_semesters': selected_semesters,
+        'distinct_days': distinct_days,
+        'conflicts': conflicts,
+    }) {% endcomment %}
+
+    {% comment %} ---------------------------------------------------------------------------------------- {% endcomment %}

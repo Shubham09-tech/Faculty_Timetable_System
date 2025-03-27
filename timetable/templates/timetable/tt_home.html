@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select a Branch</title>
+    <style>
+        /* General reset */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        /* Center the content */
+        body, html {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* Main container styles */
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 30px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        /* Title styling */
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #555;
+        }
+
+        /* Button styles */
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        /* Link styles */
+        a {
+            text-decoration: none;
+            display: block;
+        }
+
+        /* Validation button styles */
+        .validation-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .validation-container a button {
+            background-color: #28a745; /* Green */
+            font-weight: bold;
+        }
+
+        .validation-container a button:hover {
+            background-color: #218838;
+        }
+
+        /* Make it responsive */
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Select a Branch</h1>
+        {% for section in sections %}
+            <a href="{% url 'select_semester' 'section' section.id %}">
+                <button>{{ section.name }}</button>
+            </a>
+        {% endfor %}
+        
+        {% for branch in branches %}
+            <a href="{% url 'select_semester' 'branch' branch.id %}">
+                <button>{{ branch.name }}</button>
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- Validation button outside the div -->
+    <div class="validation-container">
+        <a href="validation/">
+            <button>Validation</button>
+        </a>
+        <a href="download/">
+            <button>Download</button>
+        </a>
+    </div>
+</body>
+</html>

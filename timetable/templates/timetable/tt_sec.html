@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Semester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .semesters {
+            margin-top: 20px;
+        }
+        a {
+            display: block;
+            text-decoration: none;
+            color: white;
+            background-color: #4CAF50;
+            text-align: center;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        a:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Select Semester</h1>
+    {% if section %}
+    <p>Selected Section: {{ section.name }}</p>  
+    <div class="semesters">
+        {% for sem in semesters %}
+            <a href="{% url 'dashboard' 'section' section.id sem %}">
+                Semester {{ sem }}
+            </a>
+        {% endfor %}
+    </div> 
+    {% elif branch %}
+    <p>Selected Branch: {{ branch.name }}</p>
+    <div class="semesters">
+        {% for sem in semesters %}
+            <a href="{% url 'dashboard' 'branch' branch.id sem %}">
+                Semester {{ sem }}
+            </a>
+        {% endfor %}
+    </div> 
+    {% endif %}
+  
+</body>
+</html>

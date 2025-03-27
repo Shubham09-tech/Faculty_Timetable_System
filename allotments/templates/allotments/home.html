@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Allocation</title>
+    <style>
+        /* Basic Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        h5 {
+            color: green;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+            font-size: 1.5em;
+            padding: 5px 10px;
+            display: inline-block;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            margin: 10px 0;
+            transition: background-color 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #45a049;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .item {
+            margin: 10px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            width: 250px;
+            background-color: white;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    {% if messages %}
+        {% for message in messages %}
+        <h5>{{ message }}</h5>
+        {% endfor %}
+    {% endif %}
+
+    <h1>Select Branch or Section</h1>
+
+    <div class="container">
+        {% for section in sections %}
+        <div class="item">
+            <h2><a href="{% url 'teacher_allocation_by_section' section.id %}">{{ section.name }}</a></h2>
+        </div>
+        {% endfor %}
+
+        {% for branch in branches %}
+        <div class="item">
+            <h2><a href="{% url 'teacher_allocation_by_branch' branch.id %}">{{ branch.name }}</a></h2>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
